@@ -1,2 +1,3 @@
 #!/bin/bash
-pkill -f "node app.js" || true
+echo "Stopping Node.js app if running..."
+pkill -f "node" || true
