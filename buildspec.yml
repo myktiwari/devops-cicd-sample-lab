@@ -1,14 +1,22 @@
 version: 0.2
+
 phases:
   install:
     runtime-versions:
       nodejs: 18
+    commands:
+      - echo "Installing dependencies..."
+      - npm install
+
   build:
     commands:
       - echo "Building Node.js app..."
       - mkdir -p build
-      - cp -r * build/
+      # Copy everything except 'build' itself to avoid recursion
+      - rsync -av --exclude='build' ./ build/
+      # Move into build folder and zip everything
       - cd build && zip -r ../app.zip .
+
 artifacts:
   files:
     - app.zip
