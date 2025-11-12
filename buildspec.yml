@@ -6,18 +6,19 @@ phases:
       nodejs: 18
     commands:
       - echo "Installing dependencies..."
+      - cd app
       - npm install
+      - cd ..
 
   build:
     commands:
-      - echo "Building Node.js app..."
-      - mkdir -p build
-      # Copy everything except 'build' itself to avoid recursion
-      - rsync -av --exclude='build' ./ build/
-      # Move into build folder and zip everything
-      - cd build && zip -r ../app.zip .
+      - echo "Packaging app for deployment..."
+      - ls -lah
+      - pwd
 
 artifacts:
   files:
-    - app.zip
-  discard-paths: yes
+    - appspec.yml
+    - scripts/**/*
+    - app/**/*
+  discard-paths: no

@@ -74,7 +74,7 @@ data "aws_ami" "amazon_linux" {
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-*-x86_64"]
   }
 }
 
@@ -142,6 +142,51 @@ resource "aws_codedeploy_deployment_group" "dg" {
     deployment_option = "WITHOUT_TRAFFIC_CONTROL"
   }
 }
+
+resource "aws_iam_role_policy" "codepipeline_codebuild_access" {
+  name = "tf-codepipeline-codebuild-access"
+  role = aws_iam_role.codepipeline_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "codebuild:BatchGetBuilds",
+          "codebuild:StartBuild"
+        ]
+        Resource = "arn:aws:codebuild:us-east-1:${data.aws_caller_identity.current.account_id}:project/tf-nodejs-build"
+      }
+    ]
+  })
+}
+
+# --- Give CodePipeline access to S3 artifact bucket ---
+resource "aws_iam_role_policy" "codepipeline_s3_access" {
+  name = "tf-codepipeline-s3-access"
+  role = aws_iam_role.codepipeline_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:GetBucketVersioning"
+        ]
+        Resource = [
+          "${aws_s3_bucket.artifact_bucket.arn}",
+          "${aws_s3_bucket.artifact_bucket.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
 
 # --- CodeBuild Role ---
 resource "aws_iam_role" "codebuild_role" {
@@ -265,6 +310,77 @@ resource "aws_codepipeline" "pipeline" {
       }
     }
   }
+}
+
+# --- Allow CodeBuild to write to CloudWatch Logs ---
+resource "aws_iam_role_policy" "codebuild_logs_access" {
+  name = "tf-codebuild-logs-access"
+  role = aws_iam_role.codebuild_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = [
+          "arn:aws:logs:us-east-1:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "codebuild_s3_access" {
+  name = "tf-codebuild-s3-access"
+  role = aws_iam_role.codebuild_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:GetBucketVersioning"
+        ]
+        Resource = [
+          "${aws_s3_bucket.artifact_bucket.arn}",
+          "${aws_s3_bucket.artifact_bucket.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "codepipeline_codedeploy_access" {
+  name = "tf-codepipeline-codedeploy-access"
+  role = aws_iam_role.codepipeline_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "codedeploy:CreateDeployment",
+          "codedeploy:GetApplication",
+          "codedeploy:GetDeployment",
+          "codedeploy:GetDeploymentConfig",
+          "codedeploy:RegisterApplicationRevision",
+          "codedeploy:GetDeploymentGroup",
+          "codedeploy:GetApplicationRevision"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # --- Data for Account ID ---
